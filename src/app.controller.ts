@@ -1,56 +1,18 @@
-import { Controller, Get, Injectable, Post } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
-import { Telegraf } from 'telegraf';
-import { VK } from 'vk-io';
-
-export interface PublishedPost extends NewPost {
-  id: string;
-  url: string;
-}
-
-export interface NewPost {
-  title: string;
-  description: string;
-  text: string;
-  tags: string[];
-  links: string[];
-}
-
-export interface PostPlatform {
-  id: string;
-  publish(post: NewPost): Promise<PublishedPost>;
-}
-
-@Injectable()
-export class PostPlatformArray extends Array<PostPlatform> {
-  constructor() {
-    super();
-    const TG_TOKEN = process.env.TG_TOKEN ?? panic('No TG_TOKEN');
-    const VK_TOKEN = process.env.VK_TOKEN ?? panic('No VK_TOKEN');
-    const tg = new Telegraf(TG_TOKEN).telegram;
-    this.push({
-      id: 'tg',
-      async publish(post): Promise<PublishedPost> {
-        const channelId = '@justerest_crossposting_channel';
-        return (await tg.sendMessage(channelId, JSON.stringify(post))) as any;
-      },
-    });
-    this.push({
-      id: 'vk',
-      async publish(post): Promise<PublishedPost> {
-        const vk = new VK({ token: VK_TOKEN });
-        const message = JSON.stringify(post);
-        return (await vk.api.wall.post({ message })) as any;
-      },
-    });
-  }
-}
+import * as platform from './platform';
+import { panic } from './panic';
+import {
+  PlatformRepository,
+  NewPost,
+  PostPlatform,
+} from './platform-repository';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly platforms: PostPlatformArray,
+    private readonly platformRepository: PlatformRepository,
   ) {}
 
   @Get()
@@ -60,13 +22,18 @@ export class AppController {
 
   @Post('post')
   async post(post: NewPost): Promise<void> {
-    const r = await Promise.allSettled(
-      this.platforms.map((p) => p.publish(post)),
-    );
-    console.log(r);
+    const platforms = this.platformRepository.map();
+    const vk = this.extractVk(platforms);
+    const vkPost = await vk.publish(post);
+    post.links.push(vkPost.url);
+    const requests = [...platforms.values()].map((p) => p.publish(post));
+    const responses = await Promise.allSettled(requests);
+    console.log(responses);
   }
-}
 
-function panic(err: string): never {
-  throw new Error(err);
+  private extractVk(platforms: Map<PostPlatform['id'], PostPlatform>) {
+    const vk = platforms.get(platform.VK) ?? panic('No VK platform');
+    platforms.delete(platform.VK);
+    return vk;
+  }
 }
