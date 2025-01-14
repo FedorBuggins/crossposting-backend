@@ -1,12 +1,13 @@
 import { Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
-import * as platform from './platform';
 import { panic } from './panic';
+import * as platformId from './platform-id';
 import {
-  PlatformRepository,
   NewPost,
+  PlatformRepository,
   PostPlatform,
-} from './platform-repository';
+  PostPlatformMap,
+} from './platform.repository';
 
 @Controller()
 export class AppController {
@@ -31,9 +32,9 @@ export class AppController {
     console.log(responses);
   }
 
-  private extractVk(platforms: Map<PostPlatform['id'], PostPlatform>) {
-    const vk = platforms.get(platform.VK) ?? panic('No VK platform');
-    platforms.delete(platform.VK);
+  private extractVk(platforms: PostPlatformMap): PostPlatform {
+    const vk = platforms.get(platformId.VK) ?? panic('No VK platform');
+    platforms.delete(platformId.VK);
     return vk;
   }
 }

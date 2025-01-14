@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Telegraf } from 'telegraf';
 import { VK } from 'vk-io';
 import { panic } from './panic';
-import * as platform from './platform';
+import * as platform from './platform-id';
 
 export interface PublishedPost extends NewPost {
   id: string;
@@ -31,9 +31,17 @@ export class VkPlatform implements PostPlatform {
 
   async publish(post: NewPost): Promise<PublishedPost> {
     const message = JSON.stringify(post);
-    return (await this.#api.wall.post({ message })) as any;
+    const response = await this.#api.wall.post({ message });
+    return {
+      id: `${response.post_id}`,
+      url: 'todo',
+      ...post,
+      ...response,
+    };
   }
 }
+
+export type PostPlatformMap = Map<PostPlatform['id'], PostPlatform>;
 
 @Injectable()
 export class TgPlatform implements PostPlatform {
@@ -45,13 +53,19 @@ export class TgPlatform implements PostPlatform {
 
   async publish(post: NewPost): Promise<PublishedPost> {
     const msg = JSON.stringify(post);
-    return (await this.#api.sendMessage(this.#CHANNEL, msg)) as any;
+    const response = await this.#api.sendMessage(this.#CHANNEL, msg);
+    return {
+      id: `${response.message_id}`,
+      url: 'todo',
+      ...post,
+      ...response,
+    };
   }
 }
 
 @Injectable()
 export class PlatformRepository {
-  readonly #map = new Map<PostPlatform['id'], PostPlatform>();
+  #map: PostPlatformMap = new Map();
 
   constructor(vk: VkPlatform, tg: TgPlatform) {
     this.#add(vk);
@@ -62,7 +76,7 @@ export class PlatformRepository {
     this.#map.set(platform.id, platform);
   }
 
-  map(): Map<PostPlatform['id'], PostPlatform> {
+  map(): PostPlatformMap {
     return new Map(this.#map);
   }
 }

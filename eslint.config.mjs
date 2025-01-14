@@ -1,13 +1,15 @@
+import { FlatCompat } from '@eslint/eslintrc';
+import js from '@eslint/js';
 import typescriptEslintEslintPlugin from '@typescript-eslint/eslint-plugin';
-import globals from 'globals';
 import tsParser from '@typescript-eslint/parser';
+import globals from 'globals';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import js from '@eslint/js';
-import { FlatCompat } from '@eslint/eslintrc';
+
+const baseDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 const compat = new FlatCompat({
-  baseDirectory: path.dirname(fileURLToPath(import.meta.url)),
+  baseDirectory,
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all,
 });
@@ -23,8 +25,7 @@ export default [
       sourceType: 'module',
       parserOptions: {
         project: 'tsconfig.json',
-        tsconfigRootDir:
-          '/data/data/com.termux/files/home/work/crossposting-backend',
+        tsconfigRootDir: baseDirectory,
       },
     },
     rules: {

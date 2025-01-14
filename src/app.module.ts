@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import {
   PlatformRepository,
   TgPlatform,
   VkPlatform,
-} from './platform-repository';
-import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+} from './platform.repository';
 
 @Module({
   imports: [ConfigModule.forRoot()],
